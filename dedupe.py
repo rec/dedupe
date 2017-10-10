@@ -1,4 +1,4 @@
-import hashlib, json, os, sys
+import hashlib, json, os, re, sys
 
 
 def make_hash(blocksize, hasher_maker=hashlib.sha1):
@@ -6,7 +6,7 @@ def make_hash(blocksize, hasher_maker=hashlib.sha1):
         hasher = hasher_maker()
         with open(filename, 'rb') as fp:
             while True:
-                buf = afile.read(blocksize)
+                buf = fp.read(blocksize)
                 if not buf:
                     return hasher.hexdigest()
                 hasher.update(buf)
@@ -17,7 +17,7 @@ def make_hash(blocksize, hasher_maker=hashlib.sha1):
 class FileCollection:
     FIELDS = 'by_size', 'by_hash', 'by_header_hash'
 
-    def __init__(self, exclude=None, verbose=True,
+    def __init__(self, exclude=None, verbose=not True,
                  header_size=0x100, blocksize=0x100000, hasher=hashlib.sha1):
         self.by_size = {}
         self.by_header_hash = {}
@@ -27,6 +27,7 @@ class FileCollection:
         self.blocksize = blocksize
         self.hasher = hasher
         self.header_size = header_size
+        self.verbose = verbose
 
     def full_hash(self, filename):
         hasher = self.hasher()
@@ -65,9 +66,9 @@ class FileCollection:
             self.by_size.setdefault(size, set()).add(fullname)
 
     def add_files(self, root):
-        for dirpath, _, filenames in os.walk:
+        for dirpath, _, filenames in os.walk(root):
             for filename in filenames:
-                fullname = os.path.join(dirpath, filename):
+                fullname = os.path.join(dirpath, filename)
                 if self.exclude(fullname):
                     continue
                 try:
@@ -81,7 +82,7 @@ class FileCollection:
                         self.verbose and print(fullname)
 
     def _add_hashes(self, values, result, hasher):
-        for bucket in values():
+        for bucket in values.values():
             if len(bucket) > 1:
                 for f in bucket:
                     result.setdefault(hasher(f), set())
@@ -101,7 +102,7 @@ class FileCollection:
 if __name__ == '__main__':
     fc = FileCollection()
     for arg in sys.argv[1:]:
-        fc.add_file_by_size(arg)
+        fc.add_files(arg)
     fc.add_header_hashes()
     fc.add_full_hashes()
     fc.print_dupes()
