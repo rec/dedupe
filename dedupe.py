@@ -1,7 +1,7 @@
 import argparse, hashlib, json, os, re, sys
 
 """
-Needs to work on up to 500,000 files.
+Needs to work on up to 500,000 files with an average pathlength of 100 = 50 MB
 
 With the current
 """
