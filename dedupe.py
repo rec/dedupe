@@ -1,108 +1,133 @@
-import hashlib, json, os, re, sys
+import argparse, hashlib, json, os, re, sys
+
+"""
+Needs to work on up to 500,000 files.
+
+With the current
+"""
 
 
-def make_hash(blocksize, hasher_maker=hashlib.sha1):
-    def maker(filename):
-        hasher = hasher_maker()
+class Hasher:
+    BLOCK_SIZE = 0x100000
+    HEADER_SIZE = 0x1000
+    HASHER = hashlib.sha1
+
+    @staticmethod
+    def filesize(cls, filename):
+        return os.stat(filename).st_size
+
+    @classmethod
+    def header(cls, filename):
+        hasher = cls.HASHER()
         with open(filename, 'rb') as fp:
+            buf = fp.read(cls.HEADER_SIZE)
+            if buf:
+                hasher.update(buf)
+                return hasher.hexdigest()
+
+    @classmethod
+    def contents(filename):
+        hasher = hashlib.sha1()
+        with open(filename, 'rb') as fp:
+            empty = True
             while True:
-                buf = fp.read(blocksize)
+                buf = fp.read(cls.BLOCK_SIZE)
                 if not buf:
-                    return hasher.hexdigest()
+                    return not empty and hasher.hexdigest()
+                empty = False
                 hasher.update(buf)
 
-    return maker
+
+def canonical_path(filename):
+    return os.path.abspath(os.path.expanduser(filename))
 
 
-class FileCollection:
-    FIELDS = 'by_size', 'by_hash', 'by_header_hash'
+class HashCollection:
+    def __init__(self, verbose, datafile):
+        def object_hook(x):
+            return set(x) if isinstance(x, list) else x
 
-    def __init__(self, exclude=None, verbose=not True,
-                 header_size=0x100, blocksize=0x100000, hasher=hashlib.sha1):
-        self.by_size = {}
-        self.by_header_hash = {}
-        self.by_hash = {}
         self.exclude = re.compile(exclude).match if exclude else lambda x: False
-        self.failures = 0
-        self.blocksize = blocksize
-        self.hasher = hasher
-        self.header_size = header_size
         self.verbose = verbose
-
-    def full_hash(self, filename):
-        hasher = self.hasher()
-        with open(filename, 'rb') as fp:
-            while True:
-                buf = fp.read(self.blocksize)
-                if not buf:
-                    return hasher.hexdigest()
-                hasher.update(buf)
-
-    def header_hash(self, filename):
-        hasher = self.hasher()
-        with open(filename, 'rb') as fp:
-            hasher.update(fp.read(self.header_size))
-            return hasher.hexdigest()
-
-    def read(self, fp):
-        data = json.load(fp)
-        for field in self.FIELDS:
-            setattr(self, field, data[field])
-
-    def write(self, fp):
-        json.dump({f: getattr(self, f) for f in self.FIELDS}, fp)
-
-    def add_file_by_size(self, fullname):
-        if self.exclude(fullname):
-            return
+        self.failures = 0
+        self.datafile = canonical_path(datafile)
 
         try:
-            size = os.stat(fullname).st_size
+            fp = open(self.datafile)
+        except:
+            print('Starting new datafile', self.datafile)
+            self.hashes = {}
+        else:
+            with fp:
+                return json.load(fp, object_hook=object_hook)
+
+    def write(self):
+        def default(o):
+            try:
+                return list(o)
+            except:
+                raise TypeError
+
+        with open(self.datafile, 'w') as fp:
+            return json.dump(obj, fp, default=default)
+
+    def add(self, filename, hasher):
+        hasher_function = getattr(Hasher, hasher)
+        try:
+            key = hasher_function(filename)
         except:
             self.failures += 1
             return
 
-        if size:
-            self.by_size.setdefault(size, set()).add(fullname)
+        if key:
+            hasher_dict = self.hashes.setdefault(hasher, {})
+            hash_entries = hasher_dict.setdefault(key, set())
+            hash_entries.add(filename)
+            if self.verbose:
+                print(filename)
 
-    def add_files(self, root):
-        for dirpath, _, filenames in os.walk(root):
-            for filename in filenames:
-                fullname = os.path.join(dirpath, filename)
-                if self.exclude(fullname):
-                    continue
-                try:
-                    size = os.stat(fullname).st_size
-                except Exception as e:
-                    print('ERROR %s on os.state of filename %s' % (e, fullname),
-                          file=sys.stderr)
-                else:
-                    if size:
-                        self.by_size.setdefault(size, set()).add(fullname)
-                        self.verbose and print(fullname)
+    def add_files(self, *roots, exclude=None):
+        for root in roots:
+            for dirpath, _, filenames in os.walk(root):
+                for relative_filename in filenames:
+                    filename = os.path.join(dirpath, relative_filename)
+                    if not (exclude and exclude(filename)):
+                        add(filename, 'filesize')
 
-    def _add_hashes(self, values, result, hasher):
-        for bucket in values.values():
+    def refine(self, before, after):
+        for bucket in self.hashes[before].values():
             if len(bucket) > 1:
                 for f in bucket:
-                    result.setdefault(hasher(f), set())
+                    add(f, after)
 
-    def add_header_hashes(self):
-        self._add_hashes(self.by_size, self.by_header_hash, self.header_hash)
 
-    def add_full_hashes(self):
-        self._add_hashes(self.by_header_hash, self.by_hash, self.full_hash)
+ADD_HELP = 'A comma-separated list of file roots to add'
+DATAFILE = '~/.swirly_dedupe.json'
 
-    def print_dupes(self):
-        for dupes in self.by_hash.values():
-            if len(dupes) > 1:
-                print(dupes)
+
+def dedupe(args):
+    hc = HashCollection(args.verbose, args.datafile)
+    if args.add:
+        args.verbose and print('Adding roots:', *args.add)
+        hc.add_files(*args.split(':'), exclude=args.exclude)
+
+    if args.header:
+        pass
+
+def parse_argv(argv):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--add', help=ADD_HELP, default=None)
+    parser.add_argument('--header', help=HEADER_HELP, action='store_true')
+    parser.add_argument('--full', help=FULL_HELP, action='store_true')
+    parser.add_argument(
+        '--verbose', help='Print each file', action='store_true')
+    parser.add_argument(
+        '--datafile', help='Name of datafile', default=DATAFILE):
+    parser.add_argument(
+        '--exclude', help=HEADER_HELP, default=None)
+
+    return parser.parse_args(argv)
 
 
 if __name__ == '__main__':
-    fc = FileCollection()
-    for arg in sys.argv[1:]:
-        fc.add_files(arg)
-    fc.add_header_hashes()
-    fc.add_full_hashes()
-    fc.print_dupes()
+    parse_arg(sys.argv[1:])
