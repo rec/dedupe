@@ -59,9 +59,9 @@ class HashCollection:
     def filename(self, strategy):
         return os.path.join(self.data, strategy + '.json')
 
-    def read(self, strategy):
+    def read(self, strategy, readonly=False):
         filename = self.filename(strategy)
-        if self.clear:
+        if not readonly and self.clear:
             print('Starting new datafile', filename)
             return {}
 
@@ -87,12 +87,13 @@ class HashCollection:
         with open(self.filename(strategy), 'w') as fp:
             return json.dump(obj, fp, default=default)
 
-    def add(self, hasher, dirpath, filename, table, fullname):
+    def add(self, hasher, dirpath, filename, table):
         entry = table.setdefault(filename, {})
         if any(dirpath in i for i in entry.values()):
             return 0
 
         hasher_function = getattr(Hasher, hasher)
+        fullname = os.path.join(dirpath, filename)
         try:
             key = hasher_function(fullname)
         except Exception as e:
@@ -106,7 +107,7 @@ class HashCollection:
 
         entry.setdefault(key, set()).add(dirpath)
         if self.verbose:
-            print(os.path.join(dirpath, filename))
+            print(fullname)
         return 1
 
     def add_files(self, *roots, exclude):
@@ -114,6 +115,7 @@ class HashCollection:
         items = 0
 
         for root in roots:
+            root = canonical_path(root)
             for dirpath, dirs, filenames in os.walk(root):
                 dirs[:] = [d for d in dirs if not d.startswith('.')]
                 for filename in filenames:
@@ -124,24 +126,24 @@ class HashCollection:
                         if e(fullname):
                             continue
 
-                    items += self.add(
-                        'filesize', dirpath, filename, table, fullname)
+                    items += self.add('filesize', dirpath, filename, table)
 
         self.write(table, 'filesize')
-        print(items, ' files', 's' if items == 1 else '', ' added.', sep='')
+        print(items, ' files', '' if items == 1 else 's', ' added.', sep='')
 
     def refine(self, before, after):
+        before_table = self.read(before, True)
         after_table = self.read(after)
         items = 0
 
-        for filename, entry in self.read(before).items():
+        for filename, entry in before_table.items():
             for key, bucket in entry.items():
                 if len(bucket) > 1:
                     for dirpath in bucket:
                         items += self.add(after, dirpath, filename, after_table)
 
         self.write(after_table, after)
-        print(items, ' file', 's' if items == 1 else '', ' added.', sep='')
+        print(items, ' file', '' if items == 1 else 's', ' added.', sep='')
 
 
 ADD_HELP = 'A comma-separated list of file roots to add'
@@ -172,7 +174,7 @@ def parse_arg(argv):
     parser.add_argument('--header', help=HEADER_HELP, action='store_true')
     parser.add_argument('--contents', help=CONTENTS_HELP, action='store_true')
     parser.add_argument(
-        '--verbose', help='Print each file', action='store_true')
+        '-v', '--verbose', help='Print each file', action='store_true')
     parser.add_argument(
         '--data', help='Name of data directory', default=DATA_DIR)
     parser.add_argument(
