@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import argparse, hashlib, json, os, re, sys
 
 """
