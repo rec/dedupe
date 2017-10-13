@@ -85,13 +85,12 @@ class HashCollection:
         with open(self.filename(strategy), 'w') as fp:
             return json.dump(obj, fp, default=default)
 
-    def add(self, hasher, dirpath, filename, table):
+    def add(self, hasher, dirpath, filename, table, fullname):
         entry = table.setdefault(filename, {})
         if any(dirpath in i for i in entry.values()):
             return 0
 
         hasher_function = getattr(Hasher, hasher)
-        fullname = os.path.join(dirpath, filename)
         try:
             key = hasher_function(fullname)
         except Exception as e:
@@ -108,7 +107,7 @@ class HashCollection:
             print(os.path.join(dirpath, filename))
         return 1
 
-    def add_files(self, *roots, exclude=None):
+    def add_files(self, *roots, exclude):
         table = self.read('filesize')
         items = 0
 
@@ -116,9 +115,15 @@ class HashCollection:
             for dirpath, dirs, filenames in os.walk(root):
                 dirs[:] = [d for d in dirs if not d.startswith('.')]
                 for filename in filenames:
-                    if not (filename.startswith('.') or
-                            exclude and exclude(filename)):
-                        items += self.add('filesize', dirpath, filename, table)
+                    if filename.startswith('.'):
+                        continue
+                    fullname = os.path.join(dirpath, filename)
+                    for e in exclude:
+                        if e(fullname):
+                            continue
+
+                    items += self.add(
+                        'filesize', dirpath, filename, table, fullname)
 
         self.write(table, 'filesize')
         print(items, ' files', 's' if items == 1 else '', ' added.', sep='')
@@ -147,7 +152,7 @@ def dedupe(args):
     hc = HashCollection(args.verbose, args.data, args.clear)
     if args.add:
         args.verbose and print('Adding roots:', args.add)
-        exclude = args.exclude and re.compile(args.exclude).match
+        exclude = [re.compile(e).match for e in args.exclude.split(':')]
         hc.add_files(*args.add.split(':'), exclude=exclude)
 
     if args.header:
@@ -169,7 +174,7 @@ def parse_arg(argv):
     parser.add_argument(
         '--data', help='Name of data directory', default=DATA_DIR)
     parser.add_argument(
-        '--exclude', help=HEADER_HELP, default=None)
+        '--exclude', help=HEADER_HELP, default='')
     parser.add_argument(
         '-c', '--clear', help='Clear files before starting', action='store_true')
 
