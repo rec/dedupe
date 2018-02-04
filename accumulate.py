@@ -29,6 +29,7 @@ class Hasher:
             buf = fp.read(blocksize)
             if buf:
                 hasher.update(buf)
+            else:
                 return hasher.hexdigest()
 
     @staticmethod
