@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import argparse, hashlib, json, os, re, sys
+import arguments, hasher, json, os, re, sys
 
 """
 Needs to work on up to 500,000 files with an average pathlength of 100 = 50 MB
@@ -17,32 +17,8 @@ contents.json:
 """
 
 
-class Hasher:
-    HEADER_SIZE = 0x1000
-    CONTENTS_SIZE = 0x100000
-    HASHER = hashlib.sha1
-
-    @classmethod
-    def _hash(cls, filename, blocksize):
-        hasher = cls.HASHER()
-        with open(filename, 'rb') as fp:
-            buf = fp.read(blocksize)
-            if buf:
-                hasher.update(buf)
-            else:
-                return hasher.hexdigest()
-
-    @staticmethod
-    def filesize(filename):
-        return os.path.isfile(filename) and os.stat(filename).st_size
-
-    @classmethod
-    def header(cls, filename):
-        return cls._hash(filename, cls.HEADER_SIZE)
-
-    @classmethod
-    def contents(cls, filename):
-        return cls._hash(filename, cls.CONTENTS_SIZE)
+def filesize(filename):
+    return os.path.isfile(filename) and os.stat(filename).st_size
 
 
 def canonical_path(filename):
@@ -86,14 +62,14 @@ class HashCollection:
                 raise TypeError
 
         with open(self.filename(strategy), 'w') as fp:
-            return json.dump(obj, fp, default=default)
+            return json.dump(obj, fp, default=default, indent=4, sort_keys=True)
 
     def add(self, hasher, dirpath, filename, table):
         entry = table.setdefault(filename, {})
         if any(dirpath in i for i in entry.values()):
             return 0
 
-        hasher_function = getattr(Hasher, hasher)
+        hasher_function = getattr(hasher.Hasher, hasher)
         fullname = os.path.join(dirpath, filename)
         try:
             key = hasher_function(fullname)
@@ -108,29 +84,30 @@ class HashCollection:
 
         entry.setdefault(key, set()).add(dirpath)
         if self.verbose:
-            print(fullname)
+            print(fullname.encode())
         return 1
 
     def add_files(self, *roots, exclude):
+        def filter_dotfiles(dirs):
+            return [d for d in dirs if not d.startswith('.')]
+
         table = self.read('filesize')
         items = 0
 
         for root in roots:
             root = canonical_path(root)
             for dirpath, dirs, filenames in os.walk(root):
-                dirs[:] = [d for d in dirs if not d.startswith('.')]
+                dirs[:] = filter_dotfiles(dirs)
+                filenames[:] = filter_dotfiles(filenames)
                 for filename in filenames:
-                    if filename.startswith('.'):
-                        continue
                     fullname = os.path.join(dirpath, filename)
-                    for e in exclude:
-                        if e(fullname):
-                            continue
+                    if any(e(fullname) for e in exclude):
+                        continue
 
                     items += self.add('filesize', dirpath, filename, table)
 
         self.write(table, 'filesize')
-        print(items, ' files', '' if items == 1 else 's', ' added.', sep='')
+        print(items, ' file', '' if items == 1 else 's', ' added.', sep='')
 
     def refine(self, before, after):
         before_table = self.read(before, True)
@@ -147,17 +124,12 @@ class HashCollection:
         print(items, ' file', '' if items == 1 else 's', ' added.', sep='')
 
 
-ADD_HELP = 'A comma-separated list of file roots to add'
-HEADER_HELP = 'Compute file headers hashes from sizes'
-CONTENTS_HELP = 'Compute contents hashes headers from header hashes'
-DATA_DIR = '~/.swirly_dedupe'
-
-
 def dedupe(args):
     hc = HashCollection(args.verbose, args.data, args.clear)
     if args.add:
         args.verbose and print('Adding roots:', args.add)
-        exclude = [re.compile(e).match for e in args.exclude.split(':')]
+        exclude = args.exclude and [
+            re.compile(e).search for e in args.exclude.split(':')]
         hc.add_files(*args.add.split(':'), exclude=exclude)
 
     if args.header:
@@ -169,22 +141,11 @@ def dedupe(args):
     print('Failures:', hc.failures)
 
 
-def parse_arg(argv):
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--add', help=ADD_HELP, default=None)
-    parser.add_argument('--header', help=HEADER_HELP, action='store_true')
-    parser.add_argument('--contents', help=CONTENTS_HELP, action='store_true')
-    parser.add_argument(
-        '-v', '--verbose', help='Print each file', action='store_true')
-    parser.add_argument(
-        '--data', help='Name of data directory', default=DATA_DIR)
-    parser.add_argument(
-        '--exclude', help=HEADER_HELP, default='')
-    parser.add_argument(
-        '-c', '--clear', help='Clear files before starting', action='store_true')
-
-    return parser.parse_args(argv)
-
+def dumb_test():
+    root = '/Volumes/October 2017 - 1/'
+    for r in os.walk(root):
+        print(*r)
 
 if __name__ == '__main__':
-    dedupe(parse_arg(sys.argv[1:]))
+    # dumb_test()
+    dedupe(arguments.parse_arg(sys.argv[1:]))
