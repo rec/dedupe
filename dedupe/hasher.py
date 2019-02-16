@@ -1,4 +1,5 @@
-import files, hashlib
+import hashlib
+from . import files
 
 HASHER = hashlib.sha1
 
