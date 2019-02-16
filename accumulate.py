@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import arguments, hasher, json, os, re, sys
+from dedupe import files, hasher
+import arguments, json, os, re, sys
 
 """
 Needs to work on up to 500,000 files with an average pathlength of 100 = 50 MB
@@ -17,19 +18,11 @@ contents.json:
 """
 
 
-def filesize(filename):
-    return os.path.isfile(filename) and os.stat(filename).st_size
-
-
-def canonical_path(filename):
-    return os.path.abspath(os.path.expanduser(filename))
-
-
 class HashCollection:
     def __init__(self, verbose, data, clear):
         self.verbose = verbose
         self.failures = 0
-        self.data = canonical_path(data)
+        self.data = files.canonical_path(data)
         self.clear = clear
         os.makedirs(self.data, exist_ok=True)
 
@@ -95,7 +88,7 @@ class HashCollection:
         items = 0
 
         for root in roots:
-            root = canonical_path(root)
+            root = files.canonical_path(root)
             for dirpath, dirs, filenames in os.walk(root):
                 dirs[:] = filter_dotfiles(dirs)
                 filenames[:] = filter_dotfiles(filenames)
@@ -141,11 +134,5 @@ def dedupe(args):
     print('Failures:', hc.failures)
 
 
-def dumb_test():
-    root = '/Volumes/October 2017 - 1/'
-    for r in os.walk(root):
-        print(*r)
-
 if __name__ == '__main__':
-    # dumb_test()
     dedupe(arguments.parse_arg(sys.argv[1:]))

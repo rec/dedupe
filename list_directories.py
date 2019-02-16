@@ -1,4 +1,5 @@
-import files, hasher, os, sys
+from dedupe import files, hasher
+import os, sys
 
 
 def size_and_header(root):
