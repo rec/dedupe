@@ -1,4 +1,4 @@
-import cfgs, os, sys
+import cfgs, os, pathlib, sys
 
 HEADER_SIZE = 0x1000
 BLOCK_SIZE = 0x1000
@@ -33,6 +33,7 @@ EXCLUDED_FILES = {
 }
 
 EXCLUDED_SUFFIXES = (
+    '.app',
     '.cc',
     '.cpp',
     '.h',
@@ -46,18 +47,19 @@ EXCLUDED_SUFFIXES = (
 def accept(f):
     return not (
         f.startswith('.') or
-        f.endswith('.app') or
         f in EXCLUDED_FILES or
         any(f.endswith(s) for s in EXCLUDED_SUFFIXES))
 
 
-def walk(root, accept=accept):
-    root = canonical_path(root)
-    for dirpath, dirs, filenames in os.walk(root):
-        dirs[:] = (d for d in dirs if accept(d))
-        for filename in filenames:
-            if accept(filename):
-                yield os.path.join(dirpath, filename)
+def walk(*roots, accept=accept):
+    for root in roots:
+        root = canonical_path(root)
+        for dirpath, dirs, filenames in os.walk(root):
+            dirs[:] = (d for d in dirs if accept(d))
+            dirpath = pathlib.Path(dirpath)
+            for filename in filenames:
+                if (not accept) or accept(filename)):
+                    yield dirpath / filename
 
 
 def size(filename):
