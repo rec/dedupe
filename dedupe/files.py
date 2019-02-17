@@ -51,15 +51,14 @@ def accept(f):
         any(f.endswith(s) for s in EXCLUDED_SUFFIXES))
 
 
-def walk(*roots, accept=accept):
-    for root in roots:
-        root = canonical_path(root)
-        for dirpath, dirs, filenames in os.walk(root):
-            dirs[:] = (d for d in dirs if accept(d))
-            dirpath = pathlib.Path(dirpath)
-            for filename in filenames:
-                if (not accept) or accept(filename)):
-                    yield dirpath / filename
+def walk(root, accept=accept):
+    root = canonical_path(root)
+    for dirpath, dirs, filenames in os.walk(root):
+        dirs[:] = (d for d in dirs if accept(d))
+        dirpath = pathlib.Path(dirpath)
+        for filename in filenames:
+            if (not accept) or accept(filename)):
+                yield dirpath / filename
 
 
 def size(filename):
