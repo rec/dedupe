@@ -6,6 +6,15 @@ DRY_RUN = not True
 VERBOSE = True
 
 
+def length(file):
+    try:
+        return mutagen.File(file).info.length
+    except:
+        print('*** error on file length', file)
+        return 0
+
+
+
 def walk(root, accept=lambda x: True):
     root = os.path.abspath(os.path.expanduser(root))
     for dirpath, dirs, filenames in os.walk(root):
@@ -47,8 +56,8 @@ def copy(sfile, target, source, counter):
         if not DRY_RUN:
             if not replace:
                 tfile.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(sfile, tfile)
             try:
-                shutil.copy(sfile, tfile)
             except:
                 try:
                     print('removing partial file', tfile)
@@ -60,8 +69,14 @@ def copy(sfile, target, source, counter):
     counter['total'] += 1
 
     while tfile.exists():
-        slength = mutagen.File(sfile).info.length
-        tlength = mutagen.File(tfile).info.length
+        slength = length(sfile)
+        tlength = length(tfile)
+        if not tlength:
+            break
+
+        if not slength:
+            counter['ignored'] += 1
+            return
 
         if abs(slength - tlength) <= DELTA:
             # If the two sources are the same time length or extremely close
