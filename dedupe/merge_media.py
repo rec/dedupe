@@ -14,7 +14,6 @@ def length(file):
         return 0
 
 
-
 def walk(root, accept=lambda x: True):
     root = os.path.abspath(os.path.expanduser(root))
     for dirpath, dirs, filenames in os.walk(root):
@@ -56,15 +55,9 @@ def copy(sfile, target, source, counter):
         if not DRY_RUN:
             if not replace:
                 tfile.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy(sfile, tfile)
-            try:
-            except:
-                try:
-                    print('removing partial file', tfile)
-                    os.remove(tfile)
-                except:
-                    pass
-                raise
+            tmp_file = tfile.with_suffix('.tmp')
+            shutil.copy(sfile, tmp_file)
+            os.rename(tmp_file, tfile)
 
     counter['total'] += 1
 
