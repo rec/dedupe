@@ -7,22 +7,33 @@ DRY_RUN = True
 VERBOSE = True
 
 
-def merge_one(source, target, counter):
-    source = pathlib.Path(source)
+def merge_all(target, *sources):
+    counter = collections.Counter()
+    for source in sources:
+        c = merge_one(pathlib.Path(source), target)
+        counter.update(c)
+    print('Total counter:', counter, file=sys.stderr)
 
+
+def merge_one(source, target):
     if VERBOSE:
-        print('Merging  ', source, '->', target)
+        print('Merging', source, '->', target, '\n', file=sys.stderr)
 
+    counter = collections.Counter()
     for sfile in files.walk(source):
         if sfile.suffix.lower() in SUFFIXES:
-            copy(sfile, target / sfile.relative_to(source), counter)
+            copy(sfile, target, sfile.relative_to(source), counter)
+    print('Counter:', counter, file=sys.stderr)
 
 
-def copy(sfile, tfile, counter):
+def copy(sfile, target, source, counter):
+    rel = sfile.relative_to(source)
+    tfile = target / rel
+
     def do_copy(replace):
         if VERBOSE:
             action = 'Replacing' if replace else 'Copying  '
-            print(action, sfile, '->', tfile)
+            print(action, rel)
 
         if not DRY_RUN:
             if not replace:
@@ -58,24 +69,9 @@ def copy(sfile, tfile, counter):
     do_copy(False)
 
 
-
-def merge_all(source, target, counter):
-    for s in pathlib.Path(source).glob('*'):
-        if not s.stem.startswith('.'):
-            merge_one(source, target, counter)
-    report(counter)
-
-
-def report(counter):
-    total = 0
-    for name in 'copies', 'replacements', 'ignored':
-        value = counter[name]
-        print(value, name)
-        total += value
-
-    print(counter['total'], 'total')
-    print(total, 'check total')
-
-
 if __name__ == '__main__':
-    merge_all(*sys.argv[1:])
+    args = sys.argv[1:]
+    if len(args) < 2:
+        print('Usage: merge_media.py target source [..source]')
+    else:
+        merge_all(*args)
