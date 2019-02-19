@@ -57,7 +57,7 @@ def walk(root, accept=accept):
         dirs[:] = (d for d in dirs if accept(d))
         dirpath = pathlib.Path(dirpath)
         for filename in filenames:
-            if (not accept) or accept(filename)):
+            if (not accept) or accept(filename):
                 yield dirpath / filename
 
 

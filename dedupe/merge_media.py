@@ -1,10 +1,19 @@
-from . import files
-import collections, mutagen, pathlib, shutil, sys
+import collections, mutagen, os, pathlib, shutil, sys
 
 SUFFIXES = {'.aif', '.aiff', '.m4a', '.mp3', '.wav', '.wave'}
 DELTA = 0.001
-DRY_RUN = True
+DRY_RUN = not True
 VERBOSE = True
+
+
+def walk(root, accept=lambda x: True):
+    root = os.path.abspath(os.path.expanduser(root))
+    for dirpath, dirs, filenames in os.walk(root):
+        dirs[:] = (d for d in dirs if accept(d))
+        dirpath = pathlib.Path(dirpath)
+        for filename in filenames:
+            if accept(filename):
+                yield dirpath / filename
 
 
 def merge_all(target, *sources):
@@ -17,12 +26,12 @@ def merge_all(target, *sources):
 
 def merge_one(source, target):
     if VERBOSE:
-        print('Merging', source, '->', target, '\n', file=sys.stderr)
+        print('\nMerging', source, '->', target, file=sys.stderr)
 
     counter = collections.Counter()
-    for sfile in files.walk(source):
+    for sfile in walk(source):
         if sfile.suffix.lower() in SUFFIXES:
-            copy(sfile, target, sfile.relative_to(source), counter)
+            copy(sfile, target, source, counter)
     print('Counter:', counter, file=sys.stderr)
 
 
@@ -38,7 +47,15 @@ def copy(sfile, target, source, counter):
         if not DRY_RUN:
             if not replace:
                 tfile.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy(sfile, tfile)
+            try:
+                shutil.copy(sfile, tfile)
+            except:
+                try:
+                    print('removing partial file', tfile)
+                    os.remove(tfile)
+                except:
+                    pass
+                raise
 
     counter['total'] += 1
 
@@ -50,7 +67,7 @@ def copy(sfile, target, source, counter):
             # If the two sources are the same time length or extremely close
             # we assume they're the same, and we take the biggest file, hoping
             # that's always the highest quality
-            if sfile.stat.st_size > tfile.stat.st_size:
+            if sfile.stat().st_size > tfile.stat().st_size:
                 do_copy(True)
                 counter['replacements'] += 1
             else:
