@@ -2,16 +2,20 @@ import sys
 from pathlib import Path
 from . import merge_media
 
+SUFFIXES = '.avi', '.jpg', '.mov', '.mp4', '.tif','.gif'
+
 
 def collect_all_suffixes(root):
     suffixes = set()
     for f in merge_media.walk(root):
-        suffixes.add(f.suffix)
+        if f.suffix not in suffixes:
+            print(f.suffix)
+            suffixes.add(f.suffix)
 
     return suffixes
 
 
-def walk(source, suffixes):
+def walk(source, suffixes=SUFFIXES):
     for dirpath, dirs, filenames in os.walk(source):
         dirpath = Path(dirpath)
         for filename in filenames:
