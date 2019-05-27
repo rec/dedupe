@@ -1,4 +1,6 @@
-import collections, os, sys
+import collections
+import os
+import sys
 
 
 def count_filename_lengths(*roots):

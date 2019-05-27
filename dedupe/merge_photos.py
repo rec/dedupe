@@ -1,9 +1,12 @@
+import os
+import shutil
 import sys
 from pathlib import Path
 from . import merge_media
 
-SUFFIXES = '.avi', '.jpg', '.mov', '.mp4', '.tif','.gif'
+SUFFIXES = '.avi', '.jpg', '.mov', '.mp4', '.tif', '.gif'
 DRY_RUN = True
+
 
 def collect_all_suffixes(root):
     suffixes = set()
@@ -27,7 +30,7 @@ def merge(source, target):
     for source_file in walk(source):
         rel = source_file.relative_to(source)
         target_file = target / rel
-        if not  target_file.exists:
+        if not target_file.exists:
             if DRY_RUN:
                 print('Moving', rel)
             else:
@@ -38,7 +41,7 @@ def _move(source, target):
     target.parent.mkdir(parents=True, exist_ok=True)
     try:
         shutil.move(source, target)
-    except:
+    except Exception:
         print('FAILED to move', source, file=sys.err)
     else:
         print('Moved', source)

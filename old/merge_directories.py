@@ -1,4 +1,6 @@
-import hashlib, os, sys
+import hashlib
+import os
+import sys
 
 
 def filesize(filename):
@@ -28,16 +30,18 @@ def remove_empty_directories(root):
                 try:
                     os.rmdir(directory)
                     removed += 1
-                except:
+                except Exception:
                     print('ERROR: cannot remove directory', directory)
 
     return removed
+
 
 EXTENSIONS = '.mp3', '.wav', '.aif', '.aiff', '.wave', '.flac', '.m4a'
 
 
 def merge_directories(
-        source, target, trash, *, rename=os.rename, makedirs=os.makedirs):
+    source, target, trash, *, rename=os.rename, makedirs=os.makedirs
+):
     results = {}
     for dirpath, dirnames, filenames in os.walk(source, topdown=False):
         relative_path = os.path.relpath(dirpath, source)
@@ -91,6 +95,7 @@ def fake_makedirs(name, exist_ok=False):
 if __name__ == '__main__':
     if not True:
         merge_directories(
-            *sys.argv[1:], rename=fake_rename, makedirs=fake_makedirs)
+            *sys.argv[1:], rename=fake_rename, makedirs=fake_makedirs
+        )
     else:
         merge_directories(*sys.argv[1:])

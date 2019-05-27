@@ -1,5 +1,5 @@
-import json, math, tempfile
-
+import json
+import math
 
 BEGIN = '[\n'
 SAMPLE = '    {"this": "is", "sixty four": "bytes", "wide": "why not???"},\n'

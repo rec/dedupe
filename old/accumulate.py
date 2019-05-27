@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 
-from dedupe import files, hasher
-import arguments, json, os, re, sys
+from dedupe import files
+import arguments
+import json
+import os
+import re
+import sys
 
 """
 Needs to work on up to 500,000 files with an average pathlength of 100 = 50 MB
@@ -40,7 +44,7 @@ class HashCollection:
 
         try:
             fp = open(filename)
-        except:
+        except Exception:
             print('Starting new datafile', filename)
             return {}
         else:
@@ -51,11 +55,13 @@ class HashCollection:
         def default(o):
             try:
                 return list(o)
-            except:
+            except Exception:
                 raise TypeError
 
         with open(self.filename(strategy), 'w') as fp:
-            return json.dump(obj, fp, default=default, indent=4, sort_keys=True)
+            return json.dump(
+                obj, fp, default=default, indent=4, sort_keys=True
+            )
 
     def add(self, hasher, dirpath, filename, table):
         entry = table.setdefault(filename, {})
@@ -67,8 +73,15 @@ class HashCollection:
         try:
             key = hasher_function(fullname)
         except Exception as e:
-            print('ERROR', e, 'in dir', dirpath, 'file', filename,
-                  file=sys.stderr)
+            print(
+                'ERROR',
+                e,
+                'in dir',
+                dirpath,
+                'file',
+                filename,
+                file=sys.stderr,
+            )
             self.failures += 1
             return 0
 
@@ -111,7 +124,9 @@ class HashCollection:
             for key, bucket in entry.items():
                 if len(bucket) > 1:
                     for dirpath in bucket:
-                        items += self.add(after, dirpath, filename, after_table)
+                        items += self.add(
+                            after, dirpath, filename, after_table
+                        )
 
         self.write(after_table, after)
         print(items, ' file', '' if items == 1 else 's', ' added.', sep='')
@@ -122,7 +137,8 @@ def dedupe(args):
     if args.add:
         args.verbose and print('Adding roots:', args.add)
         exclude = args.exclude and [
-            re.compile(e).search for e in args.exclude.split(':')]
+            re.compile(e).search for e in args.exclude.split(':')
+        ]
         hc.add_files(*args.add.split(':'), exclude=exclude)
 
     if args.header:

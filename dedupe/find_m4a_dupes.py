@@ -1,4 +1,6 @@
-import json, os, pathlib, sys
+import os
+import pathlib
+import sys
 
 
 def move_m4a_dupes(source, target):

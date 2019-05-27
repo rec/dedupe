@@ -1,4 +1,7 @@
-import cfgs, os, pathlib, sys
+import cfgs
+import os
+import pathlib
+import sys
 
 HEADER_SIZE = 0x1000
 BLOCK_SIZE = 0x1000
@@ -27,28 +30,19 @@ EXCLUDED_FILES = {
     'tmp',
     'usr',
     'var',
-
     '__pycache__',
     'Shared',
 }
 
-EXCLUDED_SUFFIXES = (
-    '.app',
-    '.cc',
-    '.cpp',
-    '.h',
-    '.hh',
-    '.hpp',
-    '.o',
-    '.so',
-    )
+EXCLUDED_SUFFIXES = ('.app', '.cc', '.cpp', '.h', '.hh', '.hpp', '.o', '.so')
 
 
 def accept(f):
     return not (
-        f.startswith('.') or
-        f in EXCLUDED_FILES or
-        any(f.endswith(s) for s in EXCLUDED_SUFFIXES))
+        f.startswith('.')
+        or f in EXCLUDED_FILES
+        or any(f.endswith(s) for s in EXCLUDED_SUFFIXES)
+    )
 
 
 def walk(root, accept=accept):

@@ -1,4 +1,4 @@
-import json, pathlib, sys
+import sys
 from . import merge_media
 
 
@@ -13,7 +13,7 @@ def find_case_issues(source):
         if len(v) > 1:
             print(*sorted(v), sep='\n')
             print()
-    
+
 
 if __name__ == '__main__':
     issues = find_case_issues(sys.argv[1])

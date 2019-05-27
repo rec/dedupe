@@ -12,7 +12,7 @@ def fingerprint(name, files, target):
         td.setdefault(fp(file), set()).add(file)
 
 
-def size_and_header(filename):
+def size_and_header(f):
     return '%s_%s' % (files.size(f), hasher.hash_header(f))
 
 
@@ -31,7 +31,7 @@ def compute_sizes(roots):
             return list(o)
         raise TypeError
 
-    write_kwds = {'default':  default, 'indent': 4, 'sort_keys': True}
+    write_kwds = {'default': default, 'indent': 4, 'sort_keys': True}
     app = cfgs.App('swirly-dedupe', write_kwds=write_kwds)
     for root in roots:
         with app.data.open('%s/size.json' % root) as f:
@@ -46,4 +46,5 @@ def _clean_dict(d):
 
 if __name__ == '__main__':
     import sys
+
     compute_sizes(sys.argv[1:])

@@ -1,4 +1,9 @@
-import collections, mutagen, os, pathlib, shutil, sys
+import collections
+import mutagen
+import os
+import pathlib
+import shutil
+import sys
 
 SUFFIXES = {'.aif', '.aiff', '.m4a', '.mp3', '.wav', '.wave'}
 DELTA = 0.001
@@ -9,7 +14,7 @@ VERBOSE = True
 def length(file):
     try:
         return mutagen.File(file).info.length
-    except:
+    except Exception:
         print('*** error on file length', file)
         return 0
 
