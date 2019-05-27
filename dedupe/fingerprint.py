@@ -19,7 +19,6 @@ def size_and_header(f):
 # Map category to fingerprint function
 FINGERPRINTERS = {
     'file': hasher.hash_file,
-    # 'size': lambda f: str(files.size(f)),
     'size': files.size,
     'size_and_header': size_and_header,
 }
