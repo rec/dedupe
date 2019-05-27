@@ -18,17 +18,17 @@ class Data:
 
     def load(self, filename):
         with open(filename, 'rb' if self.binary else 'r') as fp:
-            return self.loader(fp, **self.load_kwds)
+            return self.loader.load(fp, **self.load_kwds)
 
     def dump(self, data, filename):
         with open(filename, 'wb' if self.binary else 'w') as fp:
-            self.dumper(data, fp, **self.dump_kwds)
-
-    def _print(self, *args, **kwds):
-        print(*args, **kwds, file=self.output_file)
+            self.loader.dump(data, fp, **self.dump_kwds)
 
     @contextlib.contextmanager
     def __call__(self, filename):
+        def _print(*args, **kwds):
+            print(*args, **kwds, file=self.output_file)
+
         data = self.load(filename)
         yield data
         if not self.write:
@@ -37,23 +37,23 @@ class Data:
         if self.backup:
             bak_name = nonexistent_filename(filename + '.bak')
             shutil.move(filename, bak_name)
-            self._print('Backed up as', bak_name)
+            _print('Backed up as', bak_name)
         else:
             bak_name = None
 
         try:
             self.dump(data, filename)
-            self._print('Written', filename)
+            _print('Written', filename)
         except Exception:
-            self._print('Failed to write', filename)
+            _print('Failed to write', filename)
             try:
                 os.remove(filename)
             except Exception:
-                self._print('Failed to remove', filename)
+                _print('Failed to remove', filename)
             if self.backup:
                 try:
                     shutil.move(bak_name, filename)
-                    self._print('Restored from', bak_name)
+                    _print('Restored from', bak_name)
                 except Exception:
                     self._print('Failed to restore', bak_name)
             raise

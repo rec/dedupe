@@ -1,13 +1,17 @@
+import attr
 import datetime
 import plistlib
 from . import data
 
+KWDS = {'fmt': plistlib.FMT_XML}
 
+
+@attr.dataclass
 class iTunesData(data.Data):
-    loader = plistlib.load
-    dumper = plistlib.load
-    BINARY = 'b'
-    LOAD_KWDS = DUMP_KWDS = {'fmt': plistlib.FMT_XML}
+    loader: object = plistlib
+    binary: bool = 'b'
+    load_kwds: dict = attr.Factory(lambda: KWDS)
+    dump_kwds: dict = attr.Factory(lambda: KWDS)
 
 
 # See http://www.joabj.com/Writing/Tech/Tuts/Java/iTunes-PlayDate.html
