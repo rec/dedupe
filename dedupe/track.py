@@ -1,7 +1,6 @@
 import datetime
 import mutagen
 import os
-import random
 
 KIND = {
     'audio/mp3': 'MPEG audio file',
@@ -12,14 +11,9 @@ FILE_TYPE = 1295270176
 YEAR_TAGS = '©day', 'TXXX:originalyear'
 
 
-def random_id(persistent_ids=()):
-    id = None
-    while id not in persistent_ids:
-        id = ''.join(random.choices('0123456789ABCDEF', k=16))
-    return id
-
-
 def file_to_track(filename, track_id, persistent_id):
+    filename = os.path.abspath(os.path.expanduser(filename))
+
     mf = mutagen.File(filename)
     for m in mf.mime:
         kind = KIND.get(m)
@@ -28,6 +22,8 @@ def file_to_track(filename, track_id, persistent_id):
     else:
         raise ValueError('Cannot understand mime type', mf.mime[0])
 
+    # I discovered this by trial and error - I don't know if it's
+    # guaranteed to work or not
     name, artist, _, album = [v[0] for v in mf.values[:4]]
     stat = os.stat(filename)
     mtime = datetime.datetime.utcfromtimestamp(stat.st_mtime)
@@ -50,7 +46,7 @@ def file_to_track(filename, track_id, persistent_id):
         'Date Modified': mtime,
         'Location': 'file:/' + filename,
         'Size': stat.st_size,
-        # We don't add these fields"
+        # We don't add these fields
         #   'File Folder Count'
         #   'Genre'
         #   'Play Count'
@@ -68,30 +64,12 @@ def file_to_track(filename, track_id, persistent_id):
     return result
 
 
-KEYS = {
-    'Album': '',
-    'Artist': '',
-    'Bit Rate': '',
-    'Date Added': '',
-    'Date Modified': '',
-    'File Folder Count': '',
-    'File Type': '',
-    'Genre': '',
-    'Kind': '',
-    'Library Folder Count': -1,
-    'Location': '',
-    'Name': '',
-    'Persistent ID': '',
-    'Play Count': '',
-    'Play Date': '',
-    'Play Date UTC': '',
-    'Sample Rate': '',
-    'Size': '',
-    'Total Time': '',
-    'Track Count': '',
-    'Track ID': '',
-    'Track Number': '',
-    'Track Type': '',
-    'Unplayed': '',
-    'Year': '',
-}
+# See http://www.joabj.com/Writing/Tech/Tuts/Java/iTunes-PlayDate.html
+# This is record['Play Date'] - record['Play Date UTC'].timestamp()
+PLAY_DATE_OFFSET = 2082852000
+
+
+def set_play_date(track, date):
+    assert isinstance(date, datetime.datetime)
+    track['Play Date UTC'] = date
+    track['Play Date'] = date.timestamp() + PLAY_DATE_OFFSET

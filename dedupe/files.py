@@ -1,4 +1,4 @@
-import cfgs
+# import cfgs
 import os
 import pathlib
 import sys
@@ -6,7 +6,7 @@ import sys
 HEADER_SIZE = 0x1000
 BLOCK_SIZE = 0x1000
 
-APP = cfgs.App('swirly-dedupe')
+# APP = cfgs.App('swirly-dedupe')
 
 EXCLUDED_FILES = {
     'Applications',

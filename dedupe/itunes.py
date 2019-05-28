@@ -1,7 +1,9 @@
 import attr
 import datetime
 import plistlib
+import random
 from .data import Data
+from .track import file_to_track
 
 KWDS = {'fmt': plistlib.FMT_XML}
 
@@ -9,7 +11,22 @@ KWDS = {'fmt': plistlib.FMT_XML}
 class iTunesLibrary:
     def __init__(self, data=None):
         self.data = data
-        self.max_track_id = max(int(i) for i in data['Tracks'])
+        self.tracks = data['Tracks']
+        self.max_track_id = max(int(i) for i in self.tracks)
+        self.persistent_ids = {i['Persistent ID'] for i in self.tracks}
+        self.playlists = self.data['Playlists']
+        master, = (p for p in self.playlists if p.get('Master'))
+        self.master_playlist = master['Playlist Items']
+
+    def add_new_track(self, filename):
+        self.max_track_id += 1
+        pid = None
+        while pid and pid in self.persistent_ids:
+            pid = ''.join(random.choices('0123456789ABCDEF', k=16))
+        self.persistent_ids.add(pid)
+        track = file_to_track(filename, self.max_track_id, pid)
+        self.tracks[self.max_track_id] = track
+        self.master_playlist.append({'Track ID': self.max_track_id})
 
     def update_date(self, date=None):
         self.data['Date'] = date or datetime.datetime.utcnow()
@@ -22,17 +39,6 @@ class iTunesLoader(Data):
     load_kwds: dict = attr.Factory(lambda: KWDS)
     dump_kwds: dict = attr.Factory(lambda: KWDS)
     maker: object = iTunesLibrary
-
-
-# See http://www.joabj.com/Writing/Tech/Tuts/Java/iTunes-PlayDate.html
-# This is record['Play Date'] - record['Play Date UTC'].timestamp()
-PLAY_DATE_OFFSET = 2082852000
-
-
-def set_play_date(track, date):
-    assert isinstance(date, datetime.datetime)
-    track['Play Date UTC'] = date
-    track['Play Date'] = date.timestamp() + PLAY_DATE_OFFSET
 
 
 if __name__ == '__main__':
