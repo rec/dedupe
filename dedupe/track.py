@@ -6,7 +6,7 @@ import os
 MP3 = 'MPEG audio file'
 AAC = 'Apple Lossless audio file'
 
-KIND = {'audio/mp3': MP3, 'audio/mp4': AAC}
+KIND = {'audio/mp2': MP3, 'audio/mp3': MP3, 'audio/mp4': AAC}
 FILE_TYPE = 1295270176
 TRACK_NUMBER = 'Track Number'
 TRACK_COUNT = 'Track Count'
@@ -43,7 +43,8 @@ def audio_data(filename):
         'Sample Rate': mf.info.sample_rate,
         'Total Time': round(mf.info.length * 1000),
     }
-    result.update(tag_data(mf.tags, kind))
+    tags = tag_data(mf.tags, kind)
+    result.update(tags)
     return result
 
 
@@ -62,19 +63,23 @@ def tag_data(tags, kind):
     result = {}
 
     for name, tag_names in FIELDS.items():
-        value = tags.get(tag_names[kind is AAC])
+        tag_name = tag_names[kind is MP3]
+        value = tags.get(tag_name)
         if value:
+            value = value[0]
             if name == TRACK_NUMBER:
                 if isinstance(value, str):
-                    value = value.split('/')
-                if not isinstance(value, (tuple, list)):
-                    print('unexpected ONE', value)
-                    continue
-                if len(value) != 2:
-                    print('unexpected TWO', value)
-                    continue
-                result[TRACK_NUMBER], result[TRACK_COUNT] = value
-                assert 1 <= result[TRACK_NUMBER] <= result[TRACK_COUNT]
+                    try:
+                        value = [int(i) for i in value.split('/')]
+                    except Exception:
+                        continue
+                tn, *tc = value
+                if tn > 0:
+                    result[TRACK_NUMBER] = tn
+                    if tc:
+                        tc = tc[0]
+                        if tc >= tn:
+                            result[TRACK_COUNT] = tc
 
             elif name == YEAR:
                 if isinstance(value, str):
@@ -83,6 +88,7 @@ def tag_data(tags, kind):
                     result[YEAR] = value
             else:
                 result[name] = value
+
     return result
 
 

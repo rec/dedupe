@@ -42,15 +42,15 @@ class iTunesLibrary:
             add(self.tracks[True][True], track, cartist, calbum, cname)
 
     def add_new_track(self, filename):
-        self.max_track_id += 1
         pid = None
         while (not pid) or pid in self.persistent_ids:
             pid = ''.join(random.choices('0123456789ABCDEF', k=16))
+        track = file_to_track(filename, self.max_track_id + 1, pid)
+        self.max_track_id += 1
         self.persistent_ids.add(pid)
-        track = file_to_track(filename, self.max_track_id, pid)
         self.data['Tracks'][self.max_track_id] = track
         self.master_playlist.append({'Track ID': self.max_track_id})
-        return self.max_track_id, pid
+        return self.max_track_id, pid, track
 
     def update_date(self, date=None):
         self.data['Date'] = date or datetime.datetime.utcnow()
