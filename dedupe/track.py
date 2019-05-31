@@ -31,6 +31,9 @@ TRACK_CONSTANTS = {
 
 def audio_data(filename):
     mf = mutagen.File(filename)
+    if not mf:
+        return None
+
     for m in mf.mime:
         kind = KIND.get(m)
         if kind:
@@ -43,8 +46,10 @@ def audio_data(filename):
         'Sample Rate': mf.info.sample_rate,
         'Total Time': round(mf.info.length * 1000),
     }
-    tags = tag_data(mf.tags, kind)
-    result.update(tags)
+    if mf.tags:
+        tags = tag_data(mf.tags, kind)
+        result.update(tags)
+
     return result
 
 
@@ -61,7 +66,6 @@ def file_data(filename):
 
 def tag_data(tags, kind):
     result = {}
-
     for name, tag_names in FIELDS.items():
         tag_name = tag_names[kind is MP3]
         value = tags.get(tag_name)
@@ -92,15 +96,19 @@ def tag_data(tags, kind):
     return result
 
 
-def file_to_track(filename, track_id, persistent_id):
+def filename_to_track(filename):
     filename = os.path.abspath(os.path.expanduser(filename))
-    print(filename)
-
     result = audio_data(filename)
-    result.update(TRACK_CONSTANTS)
-    result.update({'Track ID': track_id, 'Persistent ID': persistent_id})
-    result.update(file_data(filename))
+    if result is not None:
+        result.update(TRACK_CONSTANTS)
+        result.update(file_data(filename))
+    return result
 
+
+def file_to_track(filename, track_id, persistent_id):
+    result = filename_to_track(filename)
+    if result is not None:
+        result.update({'Track ID': track_id, 'Persistent ID': persistent_id})
     return result
 
 

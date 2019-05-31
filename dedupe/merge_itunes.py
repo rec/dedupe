@@ -1,71 +1,97 @@
-import collections
-from pathlib import Path
 from .itunes import iTunesLoader
+from pathlib import Path
+import collections
+import mutagen
 import shutil
-import traceback
 
 LIBRARY_NAME = 'iTunes Music Library.xml'
-AUDIO_SUFFIXES = '.mp3', '.m4a'
+AUDIO_SUFFIXES = '.aiff', '.aif', '.wav', '.wave', '.mp3', '.m4a'
+LOADER = iTunesLoader()
 
 
-def merge(source, target, dry_run=True, itunes_file=None):
-    source, target = Path(source), Path(target)
-    itunes_file = itunes_file or target / LIBRARY_NAME
-    target /= 'iTunes Media'
-    loader = iTunesLoader(write=not dry_run)
-    with loader.file_context(itunes_file) as itunes:
-        _merge(itunes, source, target, dry_run)
-        itunes.update_date()
+class Merger:
+    def __init__(self, source, target, dry_run=True, itunes=None, move=True):
+        self.itunes_file = itunes or Path(target) / LIBRARY_NAME
+        self.source = Path(source)
+        self.target = Path(target) / 'iTunes Media'
+        self.dry_run = dry_run
+        self.counter = collections.Counter()
+        self.files = collections.defaultdict(list)
+        self.move = move
 
+    def old_merge(self):
+        loader = iTunesLoader(write=not self.dry_run)
+        with loader.file_context(self.itunes_file) as self.itunes:
+            self.merge()
+            self.itunes.update_date()
 
-def _merge(itunes, source, target, dry_run):
-    counter = collections.Counter()
-    try:
-        for fsource in _missing_files(source, target):
-            ftarget = target / fsource.relative_to(source)
-            print('move', ftarget, fsource, sep=':')
-            if dry_run:
-                ftarget = fsource
+    def merge(self):
+        try:
+            self._move_or_mark_dupe(self.source, self.target)
+            self._add_files(self.files['to_move'])
+        finally:
+            for k, v in self.counter.items():
+                print(k, v, sep=' = ')
+
+    def execute(self):
+        for source in self.files['to_move']:
+            target = self._relative(source)
+
+            if self.dry_run:
+                print('move' if self.move else 'copy', source, target)
+            elif self.move:
+                shutil.move(source, target)
             else:
-                shutil.move(fsource, ftarget)
+                shutil.copy(source, target)
 
-            for f in _files_beneath(ftarget):
-                try:
-                    track_id, pid, track = itunes.add_new_track(f)
-                    print('add', track_id, pid, sep=':')
-                    counter.update(track.keys())
-                    counter.update([len(track)])
-                except Exception as e:
-                    print('ERROR', f)
-                    traceback.print_exc()
-                    counter[('ERROR', str(e))] += 1
+        loader = iTunesLoader(write=not self.dry_run)
+        with loader.file_context(self.itunes_file, not self.dry_run) as itunes:
+            for source in self.files['add']:
+                itunes.add_new_track(self._relative(source))
 
-    except KeyboardInterrupt:
-        pass
-    for k, v in counter.items():
-        print(k, v, sep=' = ')
+    def _relative(self, f, target=None):
+        return (target or self.target) / f.relative_to(self.source)
 
+    def _append(self, action, filename):
+        self.files[action].append(filename)
 
-def _missing_files(source, target):
-    for s in source.iterdir():
-        if not s.name.startswith('.'):
+    def _move_or_mark_dupe(self, source, target):
+        for s in source.iterdir():
+            if s.name.startswith('.'):
+                continue
+
             t = target / s.name
-            if not (t.exists() or t.with_suffix('.m4a').exists()):
-                yield s
+            is_dupe = t.exists() or t.with_suffix('.m4a').exists()
+
+            if not is_dupe:
+                self._append('to_move', s)
             elif s.is_dir():
-                yield from _missing_files(s, t)
+                self._move_or_mark_dupe(s, t)
+            else:
+                self._append('dupes', s)
 
+    def _add_files(self, files):
+        for f in files:
+            if f.name.startswith('.'):
+                continue
 
-def _files_beneath(f):
-    if not f.name.startswith('.'):
-        if f.suffix in AUDIO_SUFFIXES:
-            yield f
-        elif f.is_dir():
-            for g in f.iterdir():
-                yield from _files_beneath(g)
+            if f.is_dir():
+                self._add_files(f.iterdir())
+                continue
+
+            if f.suffix in AUDIO_SUFFIXES:
+                try:
+                    if mutagen.File(f):
+                        self._append('add', f)
+                    else:
+                        self._append('ignore', f)
+                except mutagen.MutagenError:
+                    self._append('error', f)
+            else:
+                self._append('ignore', f)
 
 
 if __name__ == '__main__':
-    source = Path('/Volumes/Matmos/Media')
-    target = Path('/Volumes/Matmos/iTunes')
-    merge(source, target)
+    merger = Merger('/Volumes/Matmos/Media', '/Volumes/Matmos/iTunes')
+    merger.merge()
+    merger.execute()

@@ -26,10 +26,11 @@ class Data:
             self.loader.dump(data, fp, **self.dump_kwds)
 
     @contextlib.contextmanager
-    def file_context(self, filename):
+    def file_context(self, filename, write=None):
         data = self.load(filename)
         yield self.maker(data)
-        if not self.write:
+
+        if not self.write if write is None else write:
             return
 
         if self.backup:
