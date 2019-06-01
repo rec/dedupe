@@ -10,7 +10,7 @@ KWDS = {'fmt': plistlib.FMT_XML}
 
 
 class iTunesLibrary:
-    def __init__(self, data=None):
+    def __init__(self, data):
         self.data = data
         self.playlists = self.data['Playlists']
         master, = (p for p in self.playlists if p.get('Master'))
@@ -72,6 +72,9 @@ class iTunesLoader(Data):
     load_kwds: dict = attr.Factory(lambda: KWDS)
     dump_kwds: dict = attr.Factory(lambda: KWDS)
     maker: object = iTunesLibrary
+
+
+context = iTunesLoader().file_context
 
 
 def canonical(name, strip_numeric_suffix=False):

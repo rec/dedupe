@@ -1,12 +1,13 @@
-from .itunes import iTunesLoader
+from . import itunes
 from pathlib import Path
 import collections
 import mutagen
 import shutil
+import sys
+import yaml
 
 LIBRARY_NAME = 'iTunes Music Library.xml'
 AUDIO_SUFFIXES = '.aiff', '.aif', '.wav', '.wave', '.mp3', '.m4a'
-LOADER = iTunesLoader()
 
 
 class Merger:
@@ -18,12 +19,6 @@ class Merger:
         self.counter = collections.Counter()
         self.files = collections.defaultdict(list)
         self.move = move
-
-    def old_merge(self):
-        loader = iTunesLoader(write=not self.dry_run)
-        with loader.file_context(self.itunes_file) as self.itunes:
-            self.merge()
-            self.itunes.update_date()
 
     def merge(self):
         try:
@@ -44,10 +39,12 @@ class Merger:
             else:
                 shutil.copy(source, target)
 
-        loader = iTunesLoader(write=not self.dry_run)
-        with loader.file_context(self.itunes_file, not self.dry_run) as itunes:
+        if self.dry_run:
+            yaml.dump(dict(self.files), sys.stdout)
+
+        with itunes.context(self.itunes_file, not self.dry_run) as self.itunes:
             for source in self.files['add']:
-                itunes.add_new_track(self._relative(source))
+                self.itunes.add_new_track(self._relative(source))
 
     def _relative(self, f, target=None):
         return (target or self.target) / f.relative_to(self.source)

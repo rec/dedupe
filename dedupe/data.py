@@ -30,7 +30,7 @@ class Data:
         data = self.load(filename)
         yield self.maker(data)
 
-        if not self.write if write is None else write:
+        if not (self.write if write is None else write):
             return
 
         if self.backup:
