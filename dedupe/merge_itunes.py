@@ -11,14 +11,15 @@ AUDIO_SUFFIXES = '.aiff', '.aif', '.wav', '.wave', '.mp3', '.m4a'
 
 
 class Merger:
-    def __init__(self, source, target, dry_run=True, itunes=None, move=True):
-        self.itunes_file = itunes or Path(target) / LIBRARY_NAME
+    def __init__(self, source, target, dry_run=True, move=True, count=None):
+        self.itunes_file = Path(target) / LIBRARY_NAME
         self.source = Path(source)
         self.target = Path(target) / 'iTunes Media'
         self.dry_run = dry_run
         self.counter = collections.Counter()
         self.files = collections.defaultdict(list)
         self.move = move
+        self.count = count
 
     def merge(self):
         try:
@@ -53,7 +54,9 @@ class Merger:
         self.files[action].append(filename)
 
     def _move_or_mark_dupe(self, source, target):
-        for s in source.iterdir():
+        for i, s in enumerate(source.iterdir()):
+            if self.count is not None and i >= self.count:
+                continue
             if s.name.startswith('.'):
                 continue
 
@@ -89,6 +92,10 @@ class Merger:
 
 
 if __name__ == '__main__':
-    merger = Merger('/Volumes/Matmos/Media', '/Volumes/Matmos/iTunes')
+    count = int(sys.argv[1]) if len(sys.argv) > 1 else None
+
+    merger = Merger(
+        '/Volumes/Matmos/Media', '/Volumes/Matmos/iTunes', count=count
+    )
     merger.merge()
     merger.execute()
