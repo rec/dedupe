@@ -9,7 +9,7 @@ import yaml
 
 LIBRARY_NAME = Path('iTunes Music Library.xml')
 MEDIA_DIRECTORY = Path('iTunes Media')
-AUDIO_SUFFIXES = '.aiff', '.aif', '.wav', '.wave', '.mp3', '.m4a'
+AUDIO_SUFFIXES = '.aiff', '.aif', '.mp3', '.m4a'  #, '.wav', '.wave'
 
 
 class Merger:
@@ -30,7 +30,7 @@ class Merger:
             self.files[action].append(file)
 
     def execute(self):
-        for source in self.files['to_move']:
+        for source in self.files['move']:
             target = self._relative(source)
 
             if self.dry_run:

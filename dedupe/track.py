@@ -5,8 +5,15 @@ import os
 
 MP3 = 'MPEG audio file'
 AAC = 'Apple Lossless audio file'
+WAV = 'WAV audio file'
+AIFF = 'AIFF audio file'
 
-KIND = {'audio/mp2': MP3, 'audio/mp3': MP3, 'audio/mp4': AAC}
+KIND = {
+    'audio/mp2': MP3,
+    'audio/mp3': MP3,
+    'audio/mp4': AAC,
+    'audio/aiff': AIFF,
+    }
 FILE_TYPE = 1295270176
 TRACK_NUMBER = 'Track Number'
 TRACK_COUNT = 'Track Count'
