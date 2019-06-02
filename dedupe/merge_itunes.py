@@ -12,17 +12,18 @@ AUDIO_SUFFIXES = '.aiff', '.aif', '.mp3', '.m4a'  # , '.wav', '.wave'
 
 
 class Merger:
-    def __init__(self, source, target, index=None, dry_run=True, move=True):
+    def __init__(
+        self, source, target, index=None, dry_run=True, itunes_dir=None
+    ):
         self.source = Path(source)
         self.target = Path(target)
         self.index = index
         self.dry_run = dry_run
         assert self.dry_run
 
-        self.itunes_file = self.target / LIBRARY_NAME
+        self.itunes_file = Path(itunes_dir or self.target) / LIBRARY_NAME
         self.counter = collections.Counter()
         self.files = collections.defaultdict(list)
-        self.mover = shutil.move if move else shutil.copy
 
     def merge(self):
         with itunes.context(self.itunes_file, not self.dry_run) as self.itunes:
@@ -42,7 +43,7 @@ class Merger:
         target = self._relative(src, action)
         if not (self.dry_run or target.exists()):
             target.parent.makedir(exist_ok=True, parents=True)
-            self.mover(src, target)
+            shutil.move(src, target)
         return src, action
 
     def _add(self, src):
@@ -101,7 +102,9 @@ if __name__ == '__main__':
             pass
 
     index = [None if i == 'None' else int(i) for i in args] or [None]
-    merger = Merger(
-        '/Volumes/Matmos/Media', '/Volumes/Matmos/iTunes', index, dry_run
-    )
+
+    source =  '/Volumes/Matmos/Media'
+    target = '/Volumes/Matmos/iTunes'
+    itunes_dir = '/Users/tom/Music/iTunes'
+    merger = Merger(source, target, index, dry_run. itunes_dir)
     merger.merge()
