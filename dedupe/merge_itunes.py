@@ -2,13 +2,12 @@ from . import itunes
 from pathlib import Path
 import collections
 import itertools
-import mutagen
 import shutil
 import sys
 
 LIBRARY_NAME = Path('iTunes Music Library.xml')
 MEDIA_DIRECTORY = Path('iTunes Media')
-AUDIO_SUFFIXES = '.aiff', '.aif', '.mp3', '.m4a'  # , '.wav', '.wave'
+AUDIO_SUFFIXES = '.aiff', '.aif', '.mp3', '.m4a', '.wav', '.wave'
 
 
 class Merger:
@@ -34,7 +33,7 @@ class Merger:
 
     def _relative(self, src, action='move'):
         tdir = self.target
-        if action and action != 'move':
+        if action:
             tdir = tdir.with_name('%s-%s' % (tdir.name, action))
 
         return tdir / src.relative_to(self.source)
@@ -45,18 +44,6 @@ class Merger:
             target.parent.makedir(exist_ok=True, parents=True)
             shutil.move(src, target)
         return src, action
-
-    def _add(self, src):
-        try:
-            if not mutagen.File(src):
-                return self._ignore(src)
-        except mutagen.MutagenError:
-            return self._error(src)
-
-        self._move(src)
-        t = src if self.dry_run else self._relative(src)
-        self.itunes.add_track(t)
-        return src, 'add'
 
     def _dupes(self, src):
         return self._move(src, 'dupes')
@@ -83,13 +70,7 @@ class Merger:
             yield self._ignore(src)
 
         else:
-            try:
-                if mutagen.File(src):
-                    yield self._add(src)
-                else:
-                    yield self._ignore(src)
-            except mutagen.MutagenError:
-                yield self._error(src)
+            yield self._add(src)
 
 
 if __name__ == '__main__':
@@ -103,8 +84,8 @@ if __name__ == '__main__':
 
     index = [None if i == 'None' else int(i) for i in args] or [None]
 
-    source =  '/Volumes/Matmos/Media'
+    source = '/Volumes/Matmos/Media'
     target = '/Volumes/Matmos/iTunes'
     itunes_dir = '/Users/tom/Music/iTunes'
-    merger = Merger(source, target, index, dry_run. itunes_dir)
+    merger = Merger(source, target, index, dry_run.itunes_dir)
     merger.merge()
