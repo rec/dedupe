@@ -18,7 +18,7 @@ class Merger:
         self.target = Path(target)
         self.index = index
         self.dry_run = dry_run
-        assert self.dry_run
+        # assert self.dry_run
 
         self.itunes_file = Path(itunes_dir or self.target) / LIBRARY_NAME
         self.counter = collections.Counter()
@@ -41,7 +41,7 @@ class Merger:
     def _move(self, src, action='move'):
         target = self._relative(src, action)
         if not (self.dry_run or target.exists()):
-            target.parent.makedir(exist_ok=True, parents=True)
+            target.parent.mkdir(exist_ok=True, parents=True)
             shutil.move(src, target)
         return src, action
 
@@ -75,7 +75,7 @@ class Merger:
 
 if __name__ == '__main__':
     args = sys.argv[1:]
-    dry_run = True  # False
+    dry_run = not True
     for flag in '-d', '--dry_run':
         try:
             dry_run = args.remove(flag) or True
@@ -87,5 +87,5 @@ if __name__ == '__main__':
     source = '/Volumes/Matmos/Media'
     target = '/Volumes/Matmos/iTunes'
     itunes_dir = '/Users/tom/Music/iTunes'
-    merger = Merger(source, target, index, dry_run.itunes_dir)
+    merger = Merger(source, target, index, dry_run, itunes_dir)
     merger.merge()

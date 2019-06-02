@@ -1,4 +1,4 @@
-attr
+attrs
 cfgs
 mutagen
 pyyaml

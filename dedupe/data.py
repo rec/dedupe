@@ -34,7 +34,7 @@ class Data:
             return
 
         if self.backup:
-            bak_name = nonexistent_filename(filename + '.bak')
+            bak_name = nonexistent_filename(str(filename) + '.bak')
             shutil.move(filename, bak_name)
             self._print('Backed up as', bak_name)
         else:

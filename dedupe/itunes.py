@@ -48,7 +48,7 @@ class iTunesLibrary:
         track = file_to_track(filename, self.max_track_id + 1, pid)
         self.max_track_id += 1
         self.persistent_ids.add(pid)
-        self.data['Tracks'][self.max_track_id] = track
+        self.data['Tracks'][str(self.max_track_id)] = track
         self.master_playlist.append({'Track ID': self.max_track_id})
         return self.max_track_id, pid, track
 
