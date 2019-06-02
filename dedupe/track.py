@@ -13,7 +13,7 @@ KIND = {
     'audio/mp3': MP3,
     'audio/mp4': AAC,
     'audio/aiff': AIFF,
-    }
+}
 FILE_TYPE = 1295270176
 TRACK_NUMBER = 'Track Number'
 TRACK_COUNT = 'Track Count'

@@ -31,17 +31,17 @@ class iTunesLibrary:
             name = track['Name']
             track_number = track['Track Number']
 
-            add(self.tracks[False][False], track, artist, album, track_number)
-            add(self.tracks[True][False], track, artist, album, name)
+            self._add(False, False, track, artist, album, track_number)
+            self._add(True, False, track, artist, album, name)
 
             cartist = canonical(artist)
             calbum = canonical(album)
             cname = canonical(name)
 
-            add(self.tracks[False][True], track, cartist, calbum, track_number)
-            add(self.tracks[True][True], track, cartist, calbum, cname)
+            self._add(False, True, track, cartist, calbum, track_number)
+            self._add(True, True, track, cartist, calbum, cname)
 
-    def add_new_track(self, filename):
+    def add_track(self, filename):
         pid = None
         while (not pid) or pid in self.persistent_ids:
             pid = ''.join(random.choices('0123456789ABCDEF', k=16))
@@ -58,11 +58,11 @@ class iTunesLibrary:
     def update_track(self, track):
         pass
 
-
-def add(tracks, track, artist, album, index):
-    artist_albums = tracks.setdefault(artist, {})
-    album_tracks = artist_albums.setdefault(album, {})
-    album_tracks.setdefault(index, []).append(track)
+    def _add(self, use_name, is_canonical, track, artist, album, index):
+        tracks = self.tracks[use_name][is_canonical]
+        artist_albums = tracks.setdefault(artist, {})
+        album_tracks = artist_albums.setdefault(album, {})
+        album_tracks.setdefault(index, []).append(track)
 
 
 @attr.dataclass

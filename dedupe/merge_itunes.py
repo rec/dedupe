@@ -5,11 +5,10 @@ import itertools
 import mutagen
 import shutil
 import sys
-import yaml
 
 LIBRARY_NAME = Path('iTunes Music Library.xml')
 MEDIA_DIRECTORY = Path('iTunes Media')
-AUDIO_SUFFIXES = '.aiff', '.aif', '.mp3', '.m4a'  #, '.wav', '.wave'
+AUDIO_SUFFIXES = '.aiff', '.aif', '.mp3', '.m4a'  # , '.wav', '.wave'
 
 
 class Merger:
@@ -18,83 +17,95 @@ class Merger:
         self.target = Path(target)
         self.index = index
         self.dry_run = dry_run
-        self.move = move
+        assert self.dry_run
 
         self.itunes_file = self.target / LIBRARY_NAME
         self.counter = collections.Counter()
         self.files = collections.defaultdict(list)
+        self.mover = shutil.move if move else shutil.copy
 
     def merge(self):
-        file_actions = self._file_actions(self.source, self.target)
-        for file, action in itertools.islice(file_actions, *self.index):
-            self.files[action].append(file)
-
-    def execute(self):
-        for source in self.files['move']:
-            target = self._relative(source)
-
-            if self.dry_run:
-                print('move' if self.move else 'copy', source, target)
-            elif self.move:
-                shutil.move(source, target)
-            else:
-                shutil.copy(source, target)
-
-        if self.dry_run:
-            dump = {}
-            for k, v in self.files.items():
-                dump[k] = [str(s) for s in v]
-            yaml.dump(dump, sys.stdout)
-
         with itunes.context(self.itunes_file, not self.dry_run) as self.itunes:
-            for source in self.files['add']:
-                if not self.dry_run:
-                    source = self._relative(source)
-                self.itunes.add_new_track(source)
+            actions = self._actions(self.source)
+            actions = itertools.islice(actions, *self.index)
+            for i, (src, action) in enumerate(actions):
+                print('%06d: %06s: %s' % (i, action, self._relative(src)))
 
-    def _relative(self, f, target=None):
-        return (target or self.target) / f.relative_to(self.source)
+    def _relative(self, src, action='move'):
+        tdir = self.target
+        if action and action != 'move':
+            tdir = tdir.with_name('%s-%s' % (tdir.name, action))
 
-    def _file_actions(self, source, target):
-        for s in source.iterdir():
+        return tdir / src.relative_to(self.source)
+
+    def _move(self, src, action='move'):
+        target = self._relative(src, action)
+        if not (self.dry_run or target.exists()):
+            target.parent.makedir(exist_ok=True, parents=True)
+            self.mover(src, target)
+        return src, action
+
+    def _add(self, src):
+        t = src if self.dry_run else self._relative(src)
+        self.itunes.add_track(t)
+        return src, 'add'
+
+    def _dupes(self, src):
+        return self._move(src, 'dupes')
+
+    def _error(self, src):
+        return self._move(src, 'error')
+
+    def _ignore(self, src):
+        return src, 'ignore'
+
+    def _actions(self, src):
+        for s in src.iterdir():
             if s.name.startswith('.'):
                 continue
-            t = target / s.name
+            t = self._relative(s)
             is_dupe = t.exists() or t.with_suffix('.m4a').exists()
 
             if not is_dupe:
-                yield s, 'move'
+                yield self._move(s)
                 yield from self._move_actions(s)
             elif s.is_dir():
-                yield from self._file_actions(s, t)
+                yield from self._actions(s)
             else:
-                yield s, 'dupes'
+                yield self._dupes(s)
 
     def _move_actions(self, f):
         if f.name.startswith('.'):
-            pass
+            return
 
-        elif f.is_dir():
-            for f in f.iterdir():
-                yield from self._move_actions(f)
+        if f.is_dir():
+            for i in f.iterdir():
+                yield from self._move_actions(i)
 
-        elif f.suffix in AUDIO_SUFFIXES:
+        elif f.suffix.lower() in AUDIO_SUFFIXES:
             try:
                 if mutagen.File(f):
-                    yield f, 'add'
+                    yield self._add(f)
                 else:
-                    yield f, 'ignore'
+                    yield self._ignore(f)
             except mutagen.MutagenError:
-                yield f, 'error'
+                yield self._error(f)
 
         else:
-            yield f, 'ignore'
+            yield self._ignore(f)
 
 
 if __name__ == '__main__':
-    index = [None if i == 'None' else int(i) for i in sys.argv[1:]]
-    while len(index) < 3:
-        index.append(None)
-    merger = Merger('/Volumes/Matmos/Media', '/Volumes/Matmos/iTunes', index)
+    args = sys.argv[1:]
+    dry_run = True  # False
+    for flag in '-d', '--dry_run':
+        try:
+            dry_run = args.remove(flag) or True
+        except ValueError:
+            pass
+
+    index = [None if i == 'None' else int(i) for i in args] or [None]
+    merger = Merger(
+        '/Volumes/Matmos/Media', '/Volumes/Matmos/iTunes', index, dry_run
+    )
     merger.merge()
-    merger.execute()
