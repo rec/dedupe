@@ -26,7 +26,7 @@ class Merger:
 
     def merge(self):
         with itunes.context(self.itunes_file, not self.dry_run) as self.itunes:
-            actions = self._actions(self.source)
+            actions = self._action(self.source)
             actions = itertools.islice(actions, *self.index)
             for i, (src, action) in enumerate(actions):
                 print('%06d: %06s: %s' % (i, action, self._relative(src)))
@@ -46,6 +46,13 @@ class Merger:
         return src, action
 
     def _add(self, src):
+        try:
+            if not mutagen.File(src):
+                return self._ignore(src)
+        except mutagen.MutagenError:
+            return self._error(src)
+
+        self._move(src)
         t = src if self.dry_run else self._relative(src)
         self.itunes.add_track(t)
         return src, 'add'
@@ -59,40 +66,29 @@ class Merger:
     def _ignore(self, src):
         return src, 'ignore'
 
-    def _actions(self, src):
-        for s in src.iterdir():
-            if s.name.startswith('.'):
-                continue
-            t = self._relative(s)
-            is_dupe = t.exists() or t.with_suffix('.m4a').exists()
+    def _action(self, src):
+        t = self._relative(src)
+        if src.name.startswith('.'):
+            pass
 
-            if not is_dupe:
-                yield self._move(s)
-                yield from self._move_actions(s)
-            elif s.is_dir():
-                yield from self._actions(s)
-            else:
-                yield self._dupes(s)
+        elif src.is_dir():
+            for s in src.iterdir():
+                yield from self._action(s)
 
-    def _move_actions(self, f):
-        if f.name.startswith('.'):
-            return
+        elif t.exists() or t.with_suffix('.m4a').exists():
+            yield self._dupes(src)
 
-        if f.is_dir():
-            for i in f.iterdir():
-                yield from self._move_actions(i)
-
-        elif f.suffix.lower() in AUDIO_SUFFIXES:
-            try:
-                if mutagen.File(f):
-                    yield self._add(f)
-                else:
-                    yield self._ignore(f)
-            except mutagen.MutagenError:
-                yield self._error(f)
+        elif src.suffix.lower() not in AUDIO_SUFFIXES:
+            yield self._ignore(src)
 
         else:
-            yield self._ignore(f)
+            try:
+                if mutagen.File(src):
+                    yield self._add(src)
+                else:
+                    yield self._ignore(src)
+            except mutagen.MutagenError:
+                yield self._error(src)
 
 
 if __name__ == '__main__':
