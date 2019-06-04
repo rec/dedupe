@@ -9,10 +9,10 @@ SUFFIX = '.m4a'
 
 def dedupe_action(src, target):
     """Return a tuple (action, *files) where action is one of
-       'ignore', 'move', or 'replace'
+       'dupe', 'move', or 'replace'
     """
     if target.exists() or target.with_suffix(SUFFIX).exists():
-        return ('ignore',)
+        return ('dupe',)
 
     if not target.parent.exists():
         return ('move',)
@@ -25,12 +25,12 @@ def dedupe_action(src, target):
         return ('move',)
 
     if any(m.suffix == SUFFIX for m in matches):
-        return ('ignore',)
+        return ('dupe',)
 
     if target.suffix != SUFFIX:
         fs = files.size(src)
         if not all(fs > files.size(m) for m in matches):
-            return ('ignore',)
+            return ('dupe',)
 
     return ('replace', *matches)
 
