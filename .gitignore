@@ -104,3 +104,5 @@ ENV/
 
 # emacs backups
 *~
+
+sandbox/
