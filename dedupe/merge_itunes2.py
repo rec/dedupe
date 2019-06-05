@@ -34,8 +34,12 @@ class Merger:
         tracks = td.iterdir() if td.is_dir() else ()
         self.tracks = {t: None for t in tracks if not t.name.startswith('.')}
 
-        for sfile in source_dir.iterdir():
-            yield self.file_action(sfile), sfile
+        if self.relative(source_dir).exists():
+            for sfile in source_dir.iterdir():
+                if not sfile.name.startswith('.'):
+                    yield self.file_action(sfile), sfile
+        else:
+            yield 'move_dir', source_dir
 
     def file_action(self, sfile):
         try:
@@ -107,9 +111,17 @@ def canonical(f):
 
 
 if __name__ == '__main__':
+    import collections
+
     source = Path('/Volumes/Matmos/Media')
     target = Path('/Volumes/Matmos/iTunes')
 
     merger = Merger(source, target)
-    for i, (action, file) in enumerate(merger.merge()):
-        print('%06d: %07s: %s' % (i, action, file))
+    counter = collections.Counter()
+
+    try:
+        for i, (action, file) in enumerate(merger.merge()):
+            print('%06d: %07s: %s' % (i, action, file))
+            counter.update([action])
+    finally:
+        print(counter)
