@@ -35,12 +35,15 @@ def dedupe_action(src, target):
     return ('replace', *matches)
 
 
+NUMBER_INTROS = 'No.', 'Part'
+
+
 def canonical(f):
     s = f.stem
     parts = s.split()
-    if len(parts) > 1:
+    if len(parts) > 2:
         if parts[-1].isnumeric():
             parts.pop()
         if parts[0].isnumeric():
             parts.pop(0)
-    return ' '.join(parts)
+    return ' '.join(parts).lower()

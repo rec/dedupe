@@ -55,18 +55,21 @@ class Merger:
         return src, 'ignore'
 
     def _action(self, src):
-        t = self._relative(src)
         if src.name.startswith('.'):
-            pass
+            return
 
-        elif src.is_dir():
+        if src.is_dir():
             for s in src.iterdir():
                 yield from self._action(s)
+
+        elif not True and '/Matmos/Matmos/' not in str(src):
+            return
 
         elif src.suffix.lower() not in AUDIO_SUFFIXES:
             yield self._ignore(src)
 
         else:
+            t = self._relative(src, '')
             action, *files = dedupe_action(src, t)
             if action == 'dupe':
                 yield self._dupes(src)
