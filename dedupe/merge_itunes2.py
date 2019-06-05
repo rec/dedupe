@@ -1,8 +1,10 @@
-# from pathlib import Path
-import attr
+from .simple_merge import rmdir_empty
 from .track import filename_to_track
-import mutagen
+from collections import Counter
 from pathlib import Path
+import attr
+import mutagen
+import shutil
 
 SUFFIX = '.m4a'
 TIME_DELTA = 1000
@@ -12,15 +14,42 @@ TIME_DELTA = 1000
 class Merger:
     source: Path = Path()
     target: Path = Path()
+    counter: Counter = attr.Factory(Counter)
 
-    def merge(self):
-        for source_dir in self.itunes_directories():
-            yield from self.merge_one(source_dir)
+    def run(self):
+        try:
+            self._gather()
+        finally:
+            print()
+            print()
+            print(self.counter)
+            print()
+            print()
+        self._merge()
+        print('Removed', rmdir_empty(self.source), 'directories')
 
-    def relative(self, f):
-        return self.target / f.relative_to(self.source)
+    def _gather(self):
+        self.actions = {}
+        for source_dir in self._itunes_directories():
+            for action, file in self._gather_directory(source_dir):
+                self.counter.update([action])
+                self.actions.setdefault(action, []).append(file)
 
-    def get_track(self, t):
+    def _merge(self):
+        for action, files in self.actions.items():
+            tdir = self.source.with_name('%s-%s' % (self.source.name, action))
+            for file in files:
+                tfile = self._relative(file, tdir)
+                tfile.parent.mkdir(exist_ok=True, parents=True)
+                if not True:
+                    print('move', file, tfile)
+                else:
+                    shutil.move(file, tfile)
+
+    def _relative(self, f, target=None):
+        return (target or self.target) / f.relative_to(self.source)
+
+    def _track(self, t):
         track = self.tracks[t]
         if track is None:
             try:
@@ -29,19 +58,19 @@ class Merger:
                 track = self.tracks[t] = False
         return track
 
-    def merge_one(self, source_dir):
-        td = self.relative(source_dir)
+    def _gather_directory(self, source_dir):
+        td = self._relative(source_dir)
         tracks = td.iterdir() if td.is_dir() else ()
         self.tracks = {t: None for t in tracks if not t.name.startswith('.')}
 
-        if self.relative(source_dir).exists():
+        if self._relative(source_dir).exists():
             for sfile in source_dir.iterdir():
                 if not sfile.name.startswith('.'):
-                    yield self.file_action(sfile), sfile
+                    yield self._file_action(sfile), sfile
         else:
-            yield 'move_dir', source_dir
+            yield 'movedir', source_dir
 
-    def file_action(self, sfile):
+    def _file_action(self, sfile):
         try:
             sdata = filename_to_track(sfile)
             if not sdata:
@@ -56,24 +85,24 @@ class Merger:
         def near(data):
             return abs(data['Total Time'] - stime) < TIME_DELTA
 
-        tfile = self.relative(sfile)
+        tfile = self._relative(sfile)
         if tfile.with_suffix(SUFFIX).exists():
             return 'dupe'
 
         if tfile.exists():
-            tdata = self.get_track(tfile)
+            tdata = self._track(tfile)
             if not tdata:
                 return 'move'
-            if near(tdata):
+            if not near(tdata):
                 return 'different'
             return 'dupe'
 
         # Look for a very similar file
         for tfile in self.tracks:
-            if canonical(tfile) != canonical(sfile):
+            if _canonical(tfile) != _canonical(sfile):
                 continue
 
-            td = self.get_track(tfile)
+            td = self._track(tfile)
             if td and near(td) and td.get('Name', '').lower() == sname:
                 if tfile.suffix == SUFFIX:
                     return 'dupe'
@@ -84,22 +113,22 @@ class Merger:
                 return 'dupe'
         return 'move'
 
-    def itunes_directories(self):
+    def _itunes_directories(self):
         music = self.source / 'Music'
         if music.is_dir():
             for artist in music.iterdir():
-                yield from subdirectories(artist)
-        yield from subdirectories(self.source / 'Podcasts')
+                yield from _subdirectories(artist)
+        yield from _subdirectories(self.source / 'Podcasts')
 
 
-def subdirectories(f):
+def _subdirectories(f):
     if f.is_dir():
         for g in f.iterdir():
             if g.is_dir():
                 yield g
 
 
-def canonical(f):
+def _canonical(f):
     s = f.stem
     parts = s.split()
     if len(parts) > 2:
@@ -111,17 +140,9 @@ def canonical(f):
 
 
 if __name__ == '__main__':
-    import collections
 
-    source = Path('/Volumes/Matmos/Media')
+    source = Path('/Volumes/Matmos/dedupe/Media')
     target = Path('/Volumes/Matmos/iTunes')
 
     merger = Merger(source, target)
-    counter = collections.Counter()
-
-    try:
-        for i, (action, file) in enumerate(merger.merge()):
-            print('%06d: %07s: %s' % (i, action, file))
-            counter.update([action])
-    finally:
-        print(counter)
+    merger.run()
