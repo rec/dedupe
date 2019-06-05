@@ -2,6 +2,7 @@
 import attr
 from .track import filename_to_track
 import mutagen
+from pathlib import Path
 
 SUFFIX = '.m4a'
 TIME_DELTA = 1000
@@ -9,8 +10,8 @@ TIME_DELTA = 1000
 
 @attr.dataclass
 class Merger:
-    source: object = None
-    target: object = None
+    source: Path = Path()
+    target: Path = Path()
 
     def merge(self):
         for source_dir in self.itunes_directories():
@@ -33,12 +34,15 @@ class Merger:
         tracks = td.iterdir() if td.is_dir() else ()
         self.tracks = {t: None for t in tracks if not t.name.startswith('.')}
 
-        for sfile in source_dir:
+        for sfile in source_dir.iterdir():
             yield self.file_action(sfile), sfile
 
     def file_action(self, sfile):
-        sdata = self.get_track(sfile)
-        if not sdata:
+        try:
+            sdata = filename_to_track(sfile)
+            if not sdata:
+                return 'cannot_read'
+        except mutagen.MutagenError:
             return 'error'
 
         stime = sdata['Total Time']
@@ -46,7 +50,7 @@ class Merger:
         ssize = sdata['Size']
 
         def near(data):
-            return abs(tdata['Total Time'] - stime) < TIME_DELTA
+            return abs(data['Total Time'] - stime) < TIME_DELTA
 
         tfile = self.relative(sfile)
         if tfile.with_suffix(SUFFIX).exists():
@@ -91,7 +95,7 @@ def subdirectories(f):
                 yield g
 
 
-def canonical(self, f):
+def canonical(f):
     s = f.stem
     parts = s.split()
     if len(parts) > 2:
@@ -103,8 +107,8 @@ def canonical(self, f):
 
 
 if __name__ == '__main__':
-    source = '/Volumes/Matmos/Media'
-    target = '/Volumes/Matmos/iTunes'
+    source = Path('/Volumes/Matmos/Media')
+    target = Path('/Volumes/Matmos/iTunes')
 
     merger = Merger(source, target)
     for i, (action, file) in enumerate(merger.merge()):
