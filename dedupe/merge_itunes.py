@@ -1,4 +1,4 @@
-from .simple_merge import rmdir_empty
+from .rmdir_empty import rmdir_empty
 from .track import filename_to_track
 from collections import Counter
 from pathlib import Path
@@ -8,6 +8,7 @@ import shutil
 
 SUFFIX = '.m4a'
 TIME_DELTA = 1000
+DRY_RUN = False
 
 
 @attr.dataclass
@@ -32,6 +33,7 @@ class Merger:
         self.actions = {}
         for source_dir in self._itunes_directories():
             for action, file in self._gather_directory(source_dir):
+                print('%7s:' % action, file)
                 self.counter.update([action])
                 self.actions.setdefault(action, []).append(file)
 
@@ -40,10 +42,9 @@ class Merger:
             tdir = self.source.with_name('%s-%s' % (self.source.name, action))
             for file in files:
                 tfile = self._relative(file, tdir)
-                tfile.parent.mkdir(exist_ok=True, parents=True)
-                if not True:
-                    print('move', file, tfile)
-                else:
+                print('move:', file, '->', tfile)
+                if not DRY_RUN:
+                    tfile.parent.mkdir(exist_ok=True, parents=True)
                     shutil.move(file, tfile)
 
     def _relative(self, f, target=None):
