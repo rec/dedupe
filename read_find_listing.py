@@ -16,6 +16,7 @@ IGNORE_FILES = {
 }
 
 IGNORE_OS_DIRECTORIES = {
+    'MobileBackups',
     'Volumes',
     'bin',
     'dev',
@@ -45,6 +46,10 @@ def split(path):
     if not path[-1]:
         path = path[:-1]
     return path
+
+
+def size(filename):
+    return os.path.isfile(filename) and os.stat(filename).st_size or 0
 
 
 def ignore(path):
