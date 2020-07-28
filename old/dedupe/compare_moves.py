@@ -1,6 +1,6 @@
-import webbrowser
 from pathlib import Path
 import shutil
+import webbrowser
 
 
 def compare_moves(source, target):

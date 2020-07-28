@@ -1,5 +1,5 @@
-import sys
 from . import merge_media
+import sys
 
 
 def find_case_issues(source):

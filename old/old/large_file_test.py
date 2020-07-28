@@ -19,10 +19,10 @@ def write_big_file(fp, length):
     fp.write(END)
 
 
-with open('bigfile.json', 'w') as fp:
-    write_big_file(fp, LENGTH)
+def main():
+    with open('bigfile.json', 'w') as fp:
+        write_big_file(fp, LENGTH)
 
-
-with open('bigfile-out.json', 'w') as fp_out:
-    with open('bigfile.json') as fp_in:
-        json.dump(json.load(fp_in), fp_out)
+    with open('bigfile-out.json', 'w') as fp_out:
+        with open('bigfile.json') as fp_in:
+            json.dump(json.load(fp_in), fp_out)

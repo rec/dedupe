@@ -58,10 +58,12 @@ def ignore(path):
         try:
             if d in IGNORE_DIRS or d.startswith('.') or d.endswith('.app'):
                 return True
-        except:
+        except Exception:
             import sys
+
             print('error!', path, d, file=sys.stderr)
             raise
+
 
 def names_and_depths(files):
     for f in files:

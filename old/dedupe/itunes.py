@@ -13,7 +13,7 @@ class iTunesLibrary:
     def __init__(self, data):
         self.data = data
         self.playlists = self.data['Playlists']
-        master, = (p for p in self.playlists if p.get('Master'))
+        (master,) = (p for p in self.playlists if p.get('Master'))
         self.master_playlist = master['Playlist Items']
 
         self.id_to_track = data['Tracks']

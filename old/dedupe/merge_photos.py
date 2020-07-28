@@ -1,8 +1,8 @@
+from . import merge_media
+from pathlib import Path
 import os
 import shutil
 import sys
-from pathlib import Path
-from . import merge_media
 
 SUFFIXES = '.avi', '.jpg', '.mov', '.mp4', '.tif', '.gif'
 DRY_RUN = True

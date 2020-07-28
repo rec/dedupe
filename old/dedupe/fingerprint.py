@@ -1,5 +1,5 @@
-import cfgs
 from . import hasher, files
+import cfgs
 
 
 def fingerprint(name, files, target):
