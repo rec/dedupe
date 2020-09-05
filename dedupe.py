@@ -1,7 +1,13 @@
-from read_find_listing import IGNORE_DIRS, IGNORE_FILES, IGNORE_OS_DIRECTORIES
+from read_find_listing import IGNORE_FILES, IGNORE_OS_DIRECTORIES
 import json
 import os
 import sys
+
+IGNORE_DIRS = {
+    'Backups.backupdb',
+    '__pycache__',
+    'Library',
+}
 
 
 def accept_dir(d):
@@ -26,6 +32,9 @@ def run_one(root):
         dirnames[:] = sorted(d for d in dirnames if accept_dir(d))
         for filename in sorted(f for f in filenames if accept_file(f)):
             path = '%s/%s' % (dirpath, filename)
+            if os.path.islink(path):
+                continue
+
             try:
                 st = os.stat(path)
             except Exception:
